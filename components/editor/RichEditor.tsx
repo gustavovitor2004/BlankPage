@@ -12,6 +12,7 @@ import Placeholder from '@tiptap/extension-placeholder'
 import Underline from '@tiptap/extension-underline'
 import Mention from '@tiptap/extension-mention'
 import { buildSuggestion } from './suggestion'
+import { FontSize } from './extensions/fontSize'
 import { EDITOR_FONTS } from '@/lib/types'
 
 interface Props {
@@ -50,6 +51,7 @@ export default function RichEditor({
       Color,
       FontFamily,
       Underline,
+      FontSize,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Placeholder.configure({
         placeholder: 'Comece a escrever sua história…',

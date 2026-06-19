@@ -9,12 +9,14 @@ import {
 } from 'lucide-react'
 import { EDITOR_FONTS } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { createClient } from '@/lib/supabase/client'
 
 interface Props {
   font: string
   fontSize: number
   lineHeight: number
   paraSpacing: number
+  userId: string
   onFontChange: (f: string) => void
   onFontSizeChange: (s: number) => void
   onLineHeightChange: (h: number) => void
@@ -24,28 +26,16 @@ interface Props {
 }
 
 function ToolbarButton({
-  onClick,
-  active,
-  title,
-  children,
+  onClick, active, title, children,
 }: {
-  onClick: () => void
-  active?: boolean
-  title: string
-  children: React.ReactNode
+  onClick: () => void; active?: boolean; title: string; children: React.ReactNode
 }) {
   return (
     <button
       onClick={onClick}
       title={title}
-      className={cn(
-        'p-1.5 rounded-md transition-colors text-sm',
-        active ? 'opacity-100' : 'opacity-50 hover:opacity-80'
-      )}
-      style={{
-        background: active ? 'var(--surface-2)' : 'transparent',
-        color: 'var(--text)',
-      }}
+      className={cn('p-1.5 rounded-md transition-colors text-sm', active ? 'opacity-100' : 'opacity-50 hover:opacity-80')}
+      style={{ background: active ? 'var(--surface-2)' : 'transparent', color: 'var(--text)' }}
     >
       {children}
     </button>
@@ -53,16 +43,9 @@ function ToolbarButton({
 }
 
 export default function EditorToolbar({
-  font,
-  fontSize,
-  lineHeight,
-  paraSpacing,
-  onFontChange,
-  onFontSizeChange,
-  onLineHeightChange,
-  onParaSpacingChange,
-  storyId,
-  chapterId,
+  font, fontSize, lineHeight, paraSpacing, userId,
+  onFontChange, onFontSizeChange, onLineHeightChange, onParaSpacingChange,
+  storyId, chapterId,
 }: Props) {
   const [editor, setEditor] = useState<Editor | null>(null)
   const [, forceUpdate] = useState(0)
@@ -81,12 +64,68 @@ export default function EditorToolbar({
     return () => clearInterval(interval)
   }, [editor])
 
+  // Salva configurações globais no Supabase
+  async function saveUserSettings(updates: Record<string, unknown>) {
+    const supabase = createClient()
+    await supabase
+      .from('user_settings')
+      .upsert({ user_id: userId, ...updates }, { onConflict: 'user_id' })
+  }
+
+  // Fonte: aplica na seleção OU em todo o texto
+  function handleFontSelect(fontName: string, fontVar: string) {
+    if (!editor) return
+    setShowFontMenu(false)
+
+    const hasSelection = !editor.state.selection.empty
+
+    if (hasSelection) {
+      // Apenas na seleção — não altera o padrão global
+      editor.chain().focus().setFontFamily(fontVar).run()
+    } else {
+      // Sem seleção: aplica em todo o texto e salva como padrão global
+      const docEnd = editor.state.doc.content.size
+      editor.chain().focus().selectAll().setFontFamily(fontVar).run()
+      editor.commands.setTextSelection(docEnd)
+      onFontChange(fontName)
+      saveUserSettings({ editor_font: fontName })
+    }
+  }
+
+  // Tamanho: aplica na seleção OU atualiza o padrão global
+  function handleFontSizeChange(newSize: number) {
+    if (!editor) return
+    const clamped = Math.min(72, Math.max(10, newSize))
+
+    const hasSelection = !editor.state.selection.empty
+
+    if (hasSelection) {
+      // Apenas na seleção — marca inline com o tamanho
+      editor.chain().focus().setFontSize(clamped).run()
+    } else {
+      // Sem seleção: atualiza o padrão global (CSS wrapper) e salva no DB
+      onFontSizeChange(clamped)
+      saveUserSettings({ editor_font_size: clamped })
+    }
+  }
+
+  // Espaçamento entre linhas — sempre global
+  function handleLineHeightChange(val: number) {
+    onLineHeightChange(val)
+    saveUserSettings({ editor_line_height: val })
+  }
+
+  // Espaçamento entre parágrafos — sempre global
+  function handleParaSpacingChange(val: number) {
+    onParaSpacingChange(val)
+    saveUserSettings({ editor_paragraph_spacing: val })
+  }
+
   const handleExport = useCallback(async () => {
     if (!editor) return
     const { default: TurndownService } = await import('turndown')
     const td = new TurndownService({ headingStyle: 'atx', bulletListMarker: '-' })
-    const html = editor.getHTML()
-    const markdown = td.turndown(html)
+    const markdown = td.turndown(editor.getHTML())
     const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -96,9 +135,18 @@ export default function EditorToolbar({
     URL.revokeObjectURL(url)
   }, [editor, chapterId])
 
-  if (!editor) return (
-    <div className="border-b h-10" style={{ borderColor: 'var(--border)' }} />
-  )
+  if (!editor) return <div className="border-b h-10" style={{ borderColor: 'var(--border)' }} />
+
+  // Detecta fonte e tamanho ativos na seleção atual
+  const selAttrs = editor.getAttributes('textStyle')
+  const selFontVar = selAttrs.fontFamily as string | undefined
+  const selFontSize = selAttrs.fontSize as number | undefined
+  const hasSelection = !editor.state.selection.empty
+
+  const activeFontName = selFontVar
+    ? (EDITOR_FONTS.find(f => f.variable === selFontVar)?.name ?? font)
+    : font
+  const displayFontSize = hasSelection && selFontSize ? Number(selFontSize) : fontSize
 
   const sep = <div className="w-px h-5 mx-1 self-center" style={{ background: 'var(--border)' }} />
 
@@ -112,9 +160,14 @@ export default function EditorToolbar({
         <button
           onClick={() => setShowFontMenu(!showFontMenu)}
           className="flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors"
-          style={{ color: 'var(--text-2)', background: 'var(--surface)', fontFamily: EDITOR_FONTS.find(f => f.name === font)?.variable ?? 'Georgia, serif' }}
+          style={{
+            color: 'var(--text-2)',
+            background: 'var(--surface)',
+            fontFamily: EDITOR_FONTS.find(f => f.name === activeFontName)?.variable ?? 'Georgia, serif',
+          }}
+          title={hasSelection ? 'Fonte da seleção' : 'Fonte global (sem seleção = aplica em todo o texto)'}
         >
-          <span style={{ fontSize: '0.85rem' }}>{font.split(' ')[0]}</span>
+          <span style={{ fontSize: '0.85rem' }}>{activeFontName.split(' ')[0]}</span>
           <ChevronDown size={12} />
         </button>
         {showFontMenu && (
@@ -122,15 +175,19 @@ export default function EditorToolbar({
             className="absolute top-8 left-0 rounded-xl py-1.5 z-50 min-w-48"
             style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: '0 8px 30px rgba(0,0,0,0.1)' }}
           >
+            {/* Indicador de modo */}
+            <p className="px-4 pb-1 text-xs" style={{ color: 'var(--text-3)' }}>
+              {hasSelection ? '→ Aplica na seleção' : '→ Aplica em todo o texto'}
+            </p>
             {EDITOR_FONTS.map(f => (
               <button
                 key={f.name}
-                onClick={() => { onFontChange(f.name); setShowFontMenu(false); editor.chain().focus().setFontFamily(f.variable).run() }}
+                onClick={() => handleFontSelect(f.name, f.variable)}
                 className="w-full text-left px-4 py-2 text-sm transition-colors"
                 style={{
                   fontFamily: f.variable,
                   color: 'var(--text)',
-                  background: font === f.name ? 'var(--surface-2)' : 'transparent',
+                  background: activeFontName === f.name ? 'var(--surface-2)' : 'transparent',
                   fontSize: '1rem',
                 }}
               >
@@ -146,17 +203,25 @@ export default function EditorToolbar({
       {/* Font size */}
       <div className="flex items-center gap-0.5">
         <button
-          onClick={() => onFontSizeChange(Math.max(12, fontSize - 1))}
+          onClick={() => handleFontSizeChange(displayFontSize - 1)}
           className="p-1 rounded opacity-50 hover:opacity-80"
           style={{ color: 'var(--text)' }}
+          title={hasSelection ? 'Diminuir tamanho da seleção' : 'Diminuir tamanho global'}
         >
           <Minus size={13} />
         </button>
-        <span className="text-xs w-6 text-center" style={{ color: 'var(--text-2)' }}>{fontSize}</span>
+        <span
+          className="text-xs w-7 text-center tabular-nums"
+          style={{ color: hasSelection && selFontSize ? 'var(--text)' : 'var(--text-2)' }}
+          title={hasSelection && selFontSize ? 'Tamanho da seleção' : 'Tamanho padrão'}
+        >
+          {displayFontSize}
+        </span>
         <button
-          onClick={() => onFontSizeChange(Math.min(32, fontSize + 1))}
+          onClick={() => handleFontSizeChange(displayFontSize + 1)}
           className="p-1 rounded opacity-50 hover:opacity-80"
           style={{ color: 'var(--text)' }}
+          title={hasSelection ? 'Aumentar tamanho da seleção' : 'Aumentar tamanho global'}
         >
           <Plus size={13} />
         </button>
@@ -219,15 +284,15 @@ export default function EditorToolbar({
 
       {sep}
 
-      {/* Line height */}
+      {/* Line height — sempre global */}
       <div className="flex items-center gap-1">
         <span className="text-xs" style={{ color: 'var(--text-3)' }}>↕</span>
         <select
           value={lineHeight}
-          onChange={e => onLineHeightChange(Number(e.target.value))}
+          onChange={e => handleLineHeightChange(Number(e.target.value))}
           className="text-xs rounded px-1 py-0.5 outline-none"
           style={{ background: 'var(--surface)', color: 'var(--text-2)', border: '1px solid var(--border)' }}
-          title="Espaçamento entre linhas"
+          title="Espaçamento entre linhas (global)"
         >
           {[1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.5].map(v => (
             <option key={v} value={v}>{v}</option>
@@ -235,15 +300,15 @@ export default function EditorToolbar({
         </select>
       </div>
 
-      {/* Paragraph spacing */}
+      {/* Paragraph spacing — sempre global */}
       <div className="flex items-center gap-1">
         <span className="text-xs" style={{ color: 'var(--text-3)' }}>¶</span>
         <select
           value={paraSpacing}
-          onChange={e => onParaSpacingChange(Number(e.target.value))}
+          onChange={e => handleParaSpacingChange(Number(e.target.value))}
           className="text-xs rounded px-1 py-0.5 outline-none"
           style={{ background: 'var(--surface)', color: 'var(--text-2)', border: '1px solid var(--border)' }}
-          title="Espaçamento entre parágrafos"
+          title="Espaçamento entre parágrafos (global)"
         >
           {[8, 12, 16, 20, 24, 32].map(v => (
             <option key={v} value={v}>{v}px</option>

@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Story, Chapter } from '@/lib/types'
+import { Story, Chapter, UserSettings } from '@/lib/types'
 import { countWords, extractNames } from '@/lib/utils'
 import RichEditor from '@/components/editor/RichEditor'
 import EditorToolbar from '@/components/editor/EditorToolbar'
@@ -14,9 +14,25 @@ interface Props {
   story: Story
   chapter: Chapter
   allChaptersText: string
+  userSettings: UserSettings | null
 }
 
-export default function EditorPage({ story, chapter, allChaptersText }: Props) {
+// Lê valor com prioridade: DB → localStorage → padrão
+function resolvePreference<T>(
+  dbValue: T | undefined | null,
+  localKey: string,
+  defaultValue: T,
+  parse: (v: string) => T = v => v as unknown as T
+): T {
+  if (dbValue != null) return dbValue
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem(localKey)
+    if (stored) return parse(stored)
+  }
+  return defaultValue
+}
+
+export default function EditorPage({ story, chapter, allChaptersText, userSettings }: Props) {
   const [isDark, setIsDark] = useState(
     typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
   )
@@ -27,17 +43,19 @@ export default function EditorPage({ story, chapter, allChaptersText }: Props) {
   const [bgUrl, setBgUrl] = useState<string | null>(chapter.background_image_url)
   const [bgOpacity, setBgOpacity] = useState(chapter.background_opacity ?? 0.5)
   const [bgBlur, setBgBlur] = useState(chapter.background_blur ?? 4)
+
+  // Preferências com prioridade: DB > localStorage > padrão
   const [font, setFont] = useState(() =>
-    typeof window !== 'undefined' ? (localStorage.getItem('editorFont') || 'Lora') : 'Lora'
+    resolvePreference(userSettings?.editor_font, 'editorFont', 'Lora')
   )
   const [fontSize, setFontSize] = useState(() =>
-    typeof window !== 'undefined' ? (Number(localStorage.getItem('editorFontSize')) || 18) : 18
+    resolvePreference(userSettings?.editor_font_size, 'editorFontSize', 18, Number)
   )
   const [lineHeight, setLineHeight] = useState(() =>
-    typeof window !== 'undefined' ? (Number(localStorage.getItem('editorLineHeight')) || 1.8) : 1.8
+    resolvePreference(userSettings?.editor_line_height, 'editorLineHeight', 1.8, Number)
   )
   const [paraSpacing, setParaSpacing] = useState(() =>
-    typeof window !== 'undefined' ? (Number(localStorage.getItem('editorParaSpacing')) || 20) : 20
+    resolvePreference(userSettings?.editor_paragraph_spacing, 'editorParaSpacing', 20, Number)
   )
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -53,7 +71,6 @@ export default function EditorPage({ story, chapter, allChaptersText }: Props) {
   const handleChange = useCallback((json: Record<string, unknown>, text: string) => {
     setWordCount(countWords(text))
     setSaveStatus('unsaved')
-
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(async () => {
       setSaveStatus('saving')
@@ -84,6 +101,7 @@ export default function EditorPage({ story, chapter, allChaptersText }: Props) {
     }).eq('id', chapter.id)
   }
 
+  // Callbacks de mudança global — salvam no localStorage (DB é salvo pela toolbar)
   function handleFontChange(f: string) {
     setFont(f)
     localStorage.setItem('editorFont', f)
@@ -107,10 +125,7 @@ export default function EditorPage({ story, chapter, allChaptersText }: Props) {
     <div className="min-h-screen flex flex-col relative" style={{ background: 'var(--bg)' }}>
       {/* Background image layer */}
       {bgUrl && (
-        <div
-          className="fixed inset-0 pointer-events-none"
-          style={{ zIndex: 0 }}
-        >
+        <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 0 }}>
           <div
             className="absolute inset-0 bg-cover bg-center"
             style={{
@@ -128,7 +143,7 @@ export default function EditorPage({ story, chapter, allChaptersText }: Props) {
         className="sticky top-0 z-30 border-b"
         style={{
           borderColor: 'var(--border)',
-          background: bgUrl ? 'rgba(var(--bg-rgb, 250,250,248), 0.85)' : 'var(--bg)',
+          background: bgUrl ? 'rgba(250,250,248,0.88)' : 'var(--bg)',
           backdropFilter: bgUrl ? 'blur(8px)' : undefined,
         }}
       >
@@ -156,25 +171,17 @@ export default function EditorPage({ story, chapter, allChaptersText }: Props) {
             <span className="text-xs" style={{ color: 'var(--text-3)' }}>
               {wordCount.toLocaleString('pt-BR')} palavras
             </span>
-            <span
-              className="text-xs"
-              style={{ color: saveStatus === 'unsaved' ? '#F87171' : 'var(--text-3)' }}
-            >
+            <span className="text-xs" style={{ color: saveStatus === 'unsaved' ? '#F87171' : 'var(--text-3)' }}>
               {statusText}
             </span>
-            <Link
-              href={`/historia/${story.id}/ler`}
-              className="p-1.5 rounded-lg"
-              style={{ color: 'var(--text-3)' }}
-              title="Modo leitura"
-            >
+            <Link href={`/historia/${story.id}/ler`} className="p-1.5 rounded-lg" style={{ color: 'var(--text-3)' }} title="Modo leitura">
               <BookOpen size={15} />
             </Link>
             <button
               onClick={() => setShowBgSettings(!showBgSettings)}
               className="p-1.5 rounded-lg"
               style={{ color: showBgSettings ? 'var(--text)' : 'var(--text-3)' }}
-              title="Configurações"
+              title="Fundo"
             >
               <Settings2 size={15} />
             </button>
@@ -186,14 +193,13 @@ export default function EditorPage({ story, chapter, allChaptersText }: Props) {
       </header>
 
       <div className="flex flex-1 relative z-10">
-        {/* Main editor area */}
         <div className="flex-1 flex flex-col">
-          {/* Formatting toolbar */}
           <EditorToolbar
             font={font}
             fontSize={fontSize}
             lineHeight={lineHeight}
             paraSpacing={paraSpacing}
+            userId={story.user_id}
             onFontChange={handleFontChange}
             onFontSizeChange={handleFontSizeChange}
             onLineHeightChange={handleLineHeightChange}
@@ -202,13 +208,10 @@ export default function EditorPage({ story, chapter, allChaptersText }: Props) {
             chapterId={chapter.id}
           />
 
-          {/* Editor */}
           <div className="flex-1 overflow-auto">
             <div
               className="max-w-3xl mx-auto px-8 py-10"
-              style={{
-                '--para-spacing': `${paraSpacing}px`,
-              } as React.CSSProperties}
+              style={{ '--para-spacing': `${paraSpacing}px` } as React.CSSProperties}
             >
               <RichEditor
                 initialContent={chapter.content}
@@ -222,7 +225,6 @@ export default function EditorPage({ story, chapter, allChaptersText }: Props) {
           </div>
         </div>
 
-        {/* Right panel: background settings */}
         {showBgSettings && (
           <BackgroundSettings
             storyId={story.id}

@@ -13,10 +13,16 @@ export default async function ChapterEditorPage({
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ data: story }, { data: chapter }, { data: allChapters }] = await Promise.all([
+  const [
+    { data: story },
+    { data: chapter },
+    { data: allChapters },
+    { data: userSettings },
+  ] = await Promise.all([
     supabase.from('stories').select('*').eq('id', id).eq('user_id', user.id).single(),
     supabase.from('chapters').select('*').eq('id', chapterId).eq('user_id', user.id).single(),
     supabase.from('chapters').select('content_text').eq('story_id', id).eq('user_id', user.id),
+    supabase.from('user_settings').select('*').eq('user_id', user.id).maybeSingle(),
   ])
 
   if (!story || !chapter) notFound()
@@ -28,6 +34,7 @@ export default async function ChapterEditorPage({
       story={story}
       chapter={chapter}
       allChaptersText={allText}
+      userSettings={userSettings}
     />
   )
 }

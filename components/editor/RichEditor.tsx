@@ -11,6 +11,7 @@ import TextAlign from '@tiptap/extension-text-align'
 import Placeholder from '@tiptap/extension-placeholder'
 import Underline from '@tiptap/extension-underline'
 import Mention from '@tiptap/extension-mention'
+import { mergeAttributes } from '@tiptap/core'
 import { buildSuggestion } from './suggestion'
 import { FontSize } from './extensions/fontSize'
 import { EDITOR_FONTS, type StoryWord } from '@/lib/types'
@@ -56,11 +57,20 @@ export default function RichEditor({
       Placeholder.configure({
         placeholder: 'Comece a escrever sua história…',
       }),
-      Mention.configure({
-        HTMLAttributes: { class: 'mention' },
+      // Custom Mention: inserts just the word, no @ prefix in the rendered HTML
+      Mention.extend({
+        renderHTML({ node, HTMLAttributes }) {
+          return [
+            'span',
+            mergeAttributes({ 'data-type': 'mention' }, this.options.HTMLAttributes, HTMLAttributes),
+            node.attrs.label ?? node.attrs.id,
+          ]
+        },
         renderText({ node }) {
           return node.attrs.label as string
         },
+      }).configure({
+        HTMLAttributes: { class: 'mention' },
         suggestion: buildSuggestion(() => suggestionsRef.current),
       }),
     ],

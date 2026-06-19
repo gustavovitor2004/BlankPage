@@ -32,7 +32,7 @@ export default function WordsManager({ storyId, userId, initialWords }: Props) {
       .single()
 
     if (error) {
-      toast.error('Erro ao adicionar palavra')
+      toast.error(`Erro: ${error.message}`)
       return
     }
 

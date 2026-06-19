@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Story, Chapter } from '@/lib/types'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
@@ -11,7 +11,6 @@ interface Props {
 }
 
 interface Page {
-  chapterTitle?: string
   html: string
 }
 
@@ -62,65 +61,85 @@ function tiptapJsonToHtml(json: Record<string, unknown>): string {
   return nodes.map(renderNode).join('')
 }
 
-function splitIntoPages(html: string, targetWords = 300): string[] {
-  if (typeof document === 'undefined') return [html]
-  const div = document.createElement('div')
-  div.innerHTML = html
-  const elements = Array.from(div.children)
+// Splits HTML into pages that fit within the fixed book page height.
+// Uses a hidden DOM probe with the same styles as .book-page to measure
+// actual pixel heights, so the split is always accurate regardless of
+// element type (paragraph, heading, blockquote, etc.).
+function splitIntoPages(html: string): string[] {
+  const source = document.createElement('div')
+  source.innerHTML = html
+  const elements = Array.from(source.children)
+  if (elements.length === 0) return ['<p></p>']
+
+  // Probe mirrors .book-page: same width (450px page including padding),
+  // same font, same styles. scrollHeight will include the 88px of vertical
+  // padding (3rem top + 2.5rem bottom), so MAX_HEIGHT = 720 - 24 = 696
+  // (720 fixed book height minus 1.5rem reserved for page number).
+  const probe = document.createElement('div')
+  probe.className = 'book-page'
+  probe.style.cssText =
+    'position:fixed;top:-99999px;left:0;width:450px;height:auto;overflow:visible;visibility:hidden;pointer-events:none;'
+  document.body.appendChild(probe)
+
+  const MAX_HEIGHT = 696
 
   const pages: string[] = []
   let current = ''
-  let words = 0
 
   for (const el of elements) {
-    const elWords = (el.textContent || '').split(/\s+/).filter(Boolean).length
-    if (words + elWords > targetWords && current) {
+    const candidate = current + el.outerHTML
+    probe.innerHTML = candidate
+
+    if (probe.scrollHeight > MAX_HEIGHT && current) {
       pages.push(current)
       current = el.outerHTML
-      words = elWords
     } else {
-      current += el.outerHTML
-      words += elWords
+      current = candidate
     }
   }
 
   if (current) pages.push(current)
-  if (pages.length === 0) pages.push('<p></p>')
+  document.body.removeChild(probe)
 
-  return pages
+  return pages.length > 0 ? pages : ['<p></p>']
+}
+
+function buildPages(story: Story, chapters: Chapter[]): Page[] {
+  const result: Page[] = []
+
+  // Title page
+  result.push({
+    html: `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;">
+      <div style="font-size:0.7em;letter-spacing:0.2em;opacity:0.5;margin-bottom:2rem;text-transform:uppercase;">— obra —</div>
+      <div style="font-size:2.2em;font-family:var(--font-cormorant),Georgia,serif;font-weight:300;line-height:1.2;margin-bottom:1rem;">${story.title}</div>
+    </div>`,
+  })
+
+  for (const chapter of chapters) {
+    const bodyHtml = tiptapJsonToHtml(chapter.content || {})
+    if (!bodyHtml.trim()) continue
+
+    // Prepend chapter title as the first element so splitIntoPages accounts
+    // for its height when deciding where the first page break goes.
+    const titleHtml = `<h3 style="font-family:var(--font-cormorant),Georgia,serif;font-size:1.15em;letter-spacing:0.05em;margin-bottom:2rem;opacity:0.7;">${chapter.title}</h3>`
+    const chapterPages = splitIntoPages(titleHtml + bodyHtml)
+
+    for (const pageHtml of chapterPages) {
+      result.push({ html: pageHtml })
+    }
+  }
+
+  return result
 }
 
 export default function BookView({ story, chapters, isDark }: Props) {
   const [spread, setSpread] = useState(0)
+  const [pages, setPages] = useState<Page[]>([])
 
-  const pages: Page[] = useMemo(() => {
-    const result: Page[] = []
-
-    // Title page
-    result.push({
-      chapterTitle: undefined,
-      html: `<div class="title-page" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;">
-        <div style="font-size:0.7em;letter-spacing:0.2em;opacity:0.5;margin-bottom:2rem;text-transform:uppercase;">— obra —</div>
-        <div style="font-size:2.2em;font-family:var(--font-cormorant),Georgia,serif;font-weight:300;line-height:1.2;margin-bottom:1rem;">${story.title}</div>
-      </div>`,
-    })
-
-    for (const chapter of chapters) {
-      const html = tiptapJsonToHtml(chapter.content || {})
-      if (!html.trim()) continue
-
-      const chapterPages = splitIntoPages(html)
-      chapterPages.forEach((pageHtml, i) => {
-        result.push({
-          chapterTitle: i === 0 ? chapter.title : undefined,
-          html: i === 0
-            ? `<h3 style="font-family:var(--font-cormorant),Georgia,serif;font-size:1.15em;letter-spacing:0.05em;margin-bottom:2rem;opacity:0.7;">${chapter.title}</h3>${pageHtml}`
-            : pageHtml,
-        })
-      })
-    }
-
-    return result
+  // Compute pages only on the client (requires DOM measurement).
+  useEffect(() => {
+    setSpread(0)
+    setPages(buildPages(story, chapters))
   }, [story, chapters])
 
   const totalSpreads = Math.ceil(pages.length / 2)
@@ -130,7 +149,6 @@ export default function BookView({ story, chapters, isDark }: Props) {
   const pageColor = isDark ? '#1E1C18' : '#FDFCF6'
   const textColor = isDark ? '#E8E4D8' : '#1C1917'
   const spineColor = isDark ? '#3A3628' : '#D6C9A8'
-  const coverColor = isDark ? '#111110' : '#E8E2D5'
   const shadowLight = isDark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.18)'
 
   return (

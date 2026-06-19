@@ -16,24 +16,22 @@ export default async function ChapterEditorPage({
   const [
     { data: story },
     { data: chapter },
-    { data: allChapters },
+    { data: storyWords },
     { data: userSettings },
   ] = await Promise.all([
     supabase.from('stories').select('*').eq('id', id).eq('user_id', user.id).single(),
     supabase.from('chapters').select('*').eq('id', chapterId).eq('user_id', user.id).single(),
-    supabase.from('chapters').select('content_text').eq('story_id', id).eq('user_id', user.id),
+    supabase.from('story_words').select('*').eq('story_id', id).eq('user_id', user.id).order('word'),
     supabase.from('user_settings').select('*').eq('user_id', user.id).maybeSingle(),
   ])
 
   if (!story || !chapter) notFound()
 
-  const allText = (allChapters || []).map(c => c.content_text || '').join(' ')
-
   return (
     <EditorPage
       story={story}
       chapter={chapter}
-      allChaptersText={allText}
+      storyWords={storyWords || []}
       userSettings={userSettings}
     />
   )

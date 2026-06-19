@@ -27,6 +27,15 @@ export interface Chapter {
   updated_at: string
 }
 
+export interface StoryWord {
+  id: string
+  story_id: string
+  user_id: string
+  word: string
+  shortcut: string | null
+  created_at: string
+}
+
 export interface UserSettings {
   user_id: string
   theme: 'light' | 'dark'

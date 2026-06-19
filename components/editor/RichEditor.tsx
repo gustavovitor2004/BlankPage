@@ -13,7 +13,7 @@ import Underline from '@tiptap/extension-underline'
 import Mention from '@tiptap/extension-mention'
 import { buildSuggestion } from './suggestion'
 import { FontSize } from './extensions/fontSize'
-import { EDITOR_FONTS } from '@/lib/types'
+import { EDITOR_FONTS, type StoryWord } from '@/lib/types'
 
 interface Props {
   initialContent: Record<string, unknown>
@@ -21,7 +21,7 @@ interface Props {
   font: string
   fontSize: number
   lineHeight: number
-  suggestions: string[]
+  suggestions: StoryWord[]
 }
 
 // Map font name → CSS font-family value

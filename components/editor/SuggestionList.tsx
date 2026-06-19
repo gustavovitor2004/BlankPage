@@ -1,9 +1,10 @@
 'use client'
 
 import { forwardRef, useEffect, useImperativeHandle, useState } from 'react'
+import type { StoryWord } from '@/lib/types'
 
 interface SuggestionListProps {
-  items: string[]
+  items: StoryWord[]
   command: (props: { label: string }) => void
 }
 
@@ -29,9 +30,9 @@ const SuggestionList = forwardRef<SuggestionListRef, SuggestionListProps>(
           setSelectedIndex(i => (i + 1) % items.length)
           return true
         }
-        if (event.key === 'Enter') {
+        if (event.key === 'Enter' || event.key === 'Tab') {
           const item = items[selectedIndex]
-          if (item) command({ label: item })
+          if (item) command({ label: item.word })
           return true
         }
         return false
@@ -44,11 +45,14 @@ const SuggestionList = forwardRef<SuggestionListRef, SuggestionListProps>(
       <div className="suggestion-list">
         {items.map((item, index) => (
           <button
-            key={item}
+            key={item.id}
             className={`suggestion-item ${index === selectedIndex ? 'is-selected' : ''}`}
-            onClick={() => command({ label: item })}
+            onClick={() => command({ label: item.word })}
           >
-            {item}
+            <span>{item.word}</span>
+            {item.shortcut && (
+              <span className="suggestion-shortcut">@{item.shortcut}</span>
+            )}
           </button>
         ))}
       </div>

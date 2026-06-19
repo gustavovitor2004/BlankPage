@@ -3,8 +3,8 @@
 import { useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Story, Chapter, UserSettings } from '@/lib/types'
-import { countWords, extractNames } from '@/lib/utils'
+import { Story, Chapter, UserSettings, StoryWord } from '@/lib/types'
+import { countWords } from '@/lib/utils'
 import RichEditor from '@/components/editor/RichEditor'
 import EditorToolbar from '@/components/editor/EditorToolbar'
 import BackgroundSettings from '@/components/editor/BackgroundSettings'
@@ -13,7 +13,7 @@ import { ArrowLeft, Moon, Sun, Settings2, BookOpen } from 'lucide-react'
 interface Props {
   story: Story
   chapter: Chapter
-  allChaptersText: string
+  storyWords: StoryWord[]
   userSettings: UserSettings | null
 }
 
@@ -32,7 +32,7 @@ function resolvePreference<T>(
   return defaultValue
 }
 
-export default function EditorPage({ story, chapter, allChaptersText, userSettings }: Props) {
+export default function EditorPage({ story, chapter, storyWords, userSettings }: Props) {
   const [isDark, setIsDark] = useState(
     typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
   )
@@ -59,7 +59,6 @@ export default function EditorPage({ story, chapter, allChaptersText, userSettin
   )
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const allTerms = extractNames(allChaptersText)
 
   function toggleTheme() {
     const next = !isDark
@@ -219,7 +218,7 @@ export default function EditorPage({ story, chapter, allChaptersText, userSettin
                 font={font}
                 fontSize={fontSize}
                 lineHeight={lineHeight}
-                suggestions={allTerms}
+                suggestions={storyWords}
               />
             </div>
           </div>

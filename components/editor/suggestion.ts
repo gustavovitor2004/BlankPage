@@ -1,15 +1,20 @@
 import { ReactRenderer } from '@tiptap/react'
 import tippy, { type Instance, type Props } from 'tippy.js'
 import type { SuggestionProps, SuggestionKeyDownProps } from '@tiptap/suggestion'
+import type { StoryWord } from '@/lib/types'
 import SuggestionList, { type SuggestionListRef } from './SuggestionList'
 
-export function buildSuggestion(getTerms: () => string[]) {
+export function buildSuggestion(getWords: () => StoryWord[]) {
   return {
     items: ({ query }: { query: string }) => {
-      const terms = getTerms()
-      if (!query) return terms.slice(0, 8)
-      return terms
-        .filter(t => t.toLowerCase().startsWith(query.toLowerCase()))
+      const words = getWords()
+      if (!query) return words.slice(0, 8)
+      const q = query.toLowerCase()
+      return words
+        .filter(w =>
+          w.word.toLowerCase().startsWith(q) ||
+          (w.shortcut && w.shortcut.toLowerCase().startsWith(q))
+        )
         .slice(0, 8)
     },
 

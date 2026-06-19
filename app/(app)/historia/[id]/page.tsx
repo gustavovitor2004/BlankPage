@@ -9,20 +9,24 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: story } = await supabase
-    .from('stories')
-    .select('*')
-    .eq('id', id)
-    .eq('user_id', user.id)
-    .single()
+  const [
+    { data: story },
+    { data: chapters },
+    { data: storyWords },
+  ] = await Promise.all([
+    supabase.from('stories').select('*').eq('id', id).eq('user_id', user.id).single(),
+    supabase.from('chapters').select('*').eq('story_id', id).order('order_index', { ascending: true }),
+    supabase.from('story_words').select('*').eq('story_id', id).eq('user_id', user.id).order('word'),
+  ])
 
   if (!story) notFound()
 
-  const { data: chapters } = await supabase
-    .from('chapters')
-    .select('*')
-    .eq('story_id', id)
-    .order('order_index', { ascending: true })
-
-  return <StoryClient story={story} initialChapters={chapters || []} userId={user.id} />
+  return (
+    <StoryClient
+      story={story}
+      initialChapters={chapters || []}
+      initialWords={storyWords || []}
+      userId={user.id}
+    />
+  )
 }

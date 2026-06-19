@@ -144,12 +144,33 @@
   font-size: 0.9rem;
   color: var(--text);
   transition: background 0.1s;
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
   width: 100%;
   text-align: left;
   background: transparent;
   border: none;
   font-family: inherit;
+}
+
+.suggestion-shortcut {
+  font-size: 0.72rem;
+  font-family: monospace;
+  color: var(--text-3);
+  background: var(--surface-2);
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+/* Mention nodes render as plain text in the editor */
+.mention {
+  color: inherit;
+  background: none;
+  border-radius: 0;
+  padding: 0;
 }
 
 .suggestion-item:hover,

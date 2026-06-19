@@ -8,17 +8,19 @@ import {
   ArrowLeft, Plus, BookOpen, Pencil, Trash2, Moon, Sun,
   GripVertical, BookMarked,
 } from 'lucide-react'
-import { Story, Chapter } from '@/lib/types'
+import { Story, Chapter, StoryWord } from '@/lib/types'
 import { formatDate, countWords } from '@/lib/utils'
+import WordsManager from '@/components/story/WordsManager'
 import toast from 'react-hot-toast'
 
 interface Props {
   story: Story
   initialChapters: Chapter[]
+  initialWords: StoryWord[]
   userId: string
 }
 
-export default function StoryClient({ story, initialChapters, userId }: Props) {
+export default function StoryClient({ story, initialChapters, initialWords, userId }: Props) {
   const router = useRouter()
   const [chapters, setChapters] = useState(initialChapters)
   const [storyTitle, setStoryTitle] = useState(story.title)
@@ -222,6 +224,8 @@ export default function StoryClient({ story, initialChapters, userId }: Props) {
             </p>
           </div>
         )}
+
+        <WordsManager storyId={story.id} userId={userId} initialWords={initialWords} />
       </main>
     </div>
   )

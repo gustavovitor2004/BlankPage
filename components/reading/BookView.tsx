@@ -153,20 +153,15 @@ export default function BookView({ story, chapters, isDark }: Props) {
           {/* Left page */}
           <div
             className="book-page book-page-left"
-            style={{
-              background: pageColor,
-              color: textColor,
-              borderRightColor: spineColor,
-              minHeight: 560,
-            }}
+            style={{ background: pageColor, color: textColor, borderRightColor: spineColor }}
           >
-            {leftPage ? (
-              <div dangerouslySetInnerHTML={{ __html: leftPage.html }} />
-            ) : (
-              <div style={{ opacity: 0.2, fontStyle: 'italic' }}>— fim —</div>
-            )}
-
-            {/* Page number */}
+            <div className="book-page-content">
+              {leftPage ? (
+                <div dangerouslySetInnerHTML={{ __html: leftPage.html }} />
+              ) : (
+                <div style={{ opacity: 0.2, fontStyle: 'italic' }}>— fim —</div>
+              )}
+            </div>
             <div
               className="absolute bottom-4 left-6 text-xs"
               style={{ color: textColor, opacity: 0.35, fontFamily: 'var(--font-lora),Georgia,serif' }}
@@ -178,18 +173,15 @@ export default function BookView({ story, chapters, isDark }: Props) {
           {/* Right page */}
           <div
             className="book-page book-page-right"
-            style={{
-              background: pageColor,
-              color: textColor,
-              minHeight: 560,
-            }}
+            style={{ background: pageColor, color: textColor }}
           >
-            {rightPage ? (
-              <div dangerouslySetInnerHTML={{ __html: rightPage.html }} />
-            ) : (
-              <div style={{ opacity: 0 }} aria-hidden />
-            )}
-
+            <div className="book-page-content">
+              {rightPage ? (
+                <div dangerouslySetInnerHTML={{ __html: rightPage.html }} />
+              ) : (
+                <div style={{ opacity: 0 }} aria-hidden />
+              )}
+            </div>
             {rightPage && (
               <div
                 className="absolute bottom-4 right-6 text-xs"

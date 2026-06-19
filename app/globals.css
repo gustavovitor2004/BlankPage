@@ -173,18 +173,24 @@
   display: flex;
   gap: 0;
   align-items: stretch;
-  min-height: 70vh;
+  height: 720px;
 }
 
 .book-page {
   flex: 1;
-  padding: 3rem 2.5rem;
+  padding: 3rem 2.5rem 2.5rem;
   background: #FDFCF6;
   position: relative;
   font-family: var(--font-lora), Georgia, serif;
   font-size: 1rem;
   line-height: 1.85;
   color: #1C1917;
+  overflow: hidden;
+}
+
+.book-page-content {
+  height: calc(100% - 1.5rem);
+  overflow: hidden;
 }
 
 .dark .book-page {

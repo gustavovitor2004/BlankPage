@@ -11,9 +11,9 @@
     --surface: #FFFFFF;
     --surface-2: #F2EFE9;
     --text: #292724;        /* texto principal ~17:1 */
-    --text-2: #595550;      /* texto secundário ~7:1 */
-    --text-3: #77716a;      /* texto apagado ~4.5:1 — era #A8A29E (2.5:1, ilegível) */
-    --placeholder: #9D9389; /* placeholder do editor */
+    --text-2: #665f58;      /* texto secundário — +10% contraste */
+    --text-3: #7c746c;      /* texto apagado — +10% contraste */
+    --placeholder: #9b8777; /* placeholder do editor */
     --border: #DED9D1;      /* bordas visíveis — era #E7E5E4 (quase invisível) */
     --border-2: #C8C3BC;
     --accent: #8B7357;

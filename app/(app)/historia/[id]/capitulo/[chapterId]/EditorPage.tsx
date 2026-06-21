@@ -161,8 +161,8 @@ export default function EditorPage({ story, chapter, storyWords, userSettings }:
               value={chapterTitle}
               onChange={e => setChapterTitle(e.target.value)}
               onBlur={handleTitleBlur}
-              className="text-sm font-medium bg-transparent outline-none border-none"
-              style={{ color: 'var(--text-2)', minWidth: 80, maxWidth: 200 }}
+              className="text-sm bg-transparent outline-none border-none"
+              style={{ color: 'var(--text)', fontWeight: 500, minWidth: 80, maxWidth: 200 }}
             />
           </div>
 

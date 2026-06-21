@@ -6,29 +6,33 @@
 
 @layer base {
   :root {
-    --bg: #FAFAF8;
-    --surface: #F4EFE6;
-    --surface-2: #EDE8DF;
-    --text: #1C1917;
-    --text-2: #78716C;
-    --text-3: #A8A29E;
-    --border: #E7E5E4;
-    --border-2: #D6D3D1;
-    --accent: #44403C;
-    --accent-hover: #292524;
+    /* Modo claro — paleta semântica com contraste suficiente */
+    --bg: #FCFBF8;
+    --surface: #FFFFFF;
+    --surface-2: #F2EFE9;
+    --text: #292724;        /* texto principal ~17:1 */
+    --text-2: #595550;      /* texto secundário ~7:1 */
+    --text-3: #77716a;      /* texto apagado ~4.5:1 — era #A8A29E (2.5:1, ilegível) */
+    --placeholder: #9D9389; /* placeholder do editor */
+    --border: #DED9D1;      /* bordas visíveis — era #E7E5E4 (quase invisível) */
+    --border-2: #C8C3BC;
+    --accent: #8B7357;
+    --accent-hover: #6B5540;
   }
 
   .dark {
-    --bg: #18181B;
-    --surface: #27272A;
-    --surface-2: #3F3F46;
-    --text: #FAFAF8;
-    --text-2: #A8A29E;
-    --text-3: #78716C;
-    --border: #3F3F46;
-    --border-2: #52525B;
-    --accent: #D6D3D1;
-    --accent-hover: #F5F5F4;
+    /* Modo escuro */
+    --bg: #181715;
+    --surface: #211f1c;
+    --surface-2: #2d2a26;
+    --text: #EEEAE4;
+    --text-2: #CBC5BD;
+    --text-3: #99928a;
+    --placeholder: #77716a;
+    --border: #3b3834;
+    --border-2: #4a4542;
+    --accent: #C4A880;
+    --accent-hover: #D6C09A;
   }
 
   * {
@@ -118,7 +122,7 @@
 .ProseMirror .is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;
-  color: var(--text-3);
+  color: var(--placeholder);
   pointer-events: none;
   height: 0;
 }

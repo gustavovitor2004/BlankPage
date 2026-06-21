@@ -34,8 +34,14 @@ function ToolbarButton({
     <button
       onClick={onClick}
       title={title}
-      className={cn('p-1.5 rounded-md transition-colors text-sm', active ? 'opacity-100' : 'opacity-50 hover:opacity-80')}
-      style={{ background: active ? 'var(--surface-2)' : 'transparent', color: 'var(--text)' }}
+      className="p-1.5 rounded-md transition-all text-sm"
+      style={{
+        background: active ? 'var(--surface-2)' : 'transparent',
+        // Cores explícitas em vez de opacity: evita que a opacidade herde para os ícones filhos
+        color: active ? 'var(--text)' : 'var(--text-3)',
+      }}
+      onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.color = 'var(--text-2)' }}
+      onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.color = 'var(--text-3)' }}
     >
       {children}
     </button>
